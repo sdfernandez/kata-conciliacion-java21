@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: conciliacion
+  datasource:
+    url: jdbc:postgresql://localhost:5432/conciliacion
+    username: conciliacion
+    password: conciliacion
+  jpa:
+    # El esquema lo maneja Flyway. Hibernate solo valida que las entidades coincidan.
+    hibernate:
+      ddl-auto: validate
+    # Evita mantener la sesión abierta durante el render de la respuesta HTTP (esconde N+1).
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
