@@ -49,7 +49,7 @@ Sin Kafka: el publisher del outbox escribe en log. Lo importante es el patrón, 
 
 ## Tickets
 
-Prioridad para antes del jueves 19/11: **T0 a T5 y T8**. T6, T7 y T9 si da el tiempo.
+Prioridad para antes del jueves 19/11 (ajustada después de ver la charla de César Ponce): **T1, T3, T5 y T7**, después T4 y T8. T2, T6 y T9 si da el tiempo.
 
 Cada ticket tiene **"Para la entrevista"**: una pregunta que tenés que poder responder en voz alta, en inglés, al terminarlo.
 
@@ -103,9 +103,11 @@ Cada ticket tiene **"Para la entrevista"**: una pregunta que tenés que poder re
 - Servicio `@Transactional` que carga el ledger del día y del procesador, corre el motor y guarda los resultados.
 - Evitar el problema N+1 (fetch join, batch size o una query proyectada).
 - Probar a propósito un caso de self-invocation de `@Transactional` y ver que no abre transacción.
+- Particionar `reconciliation_result` por mes (particiones nativas de Postgres) y escribir un job de retención que haga `DETACH`/`DROP` de las particiones viejas (en lugar de `DELETE` masivo).
+- Agregar una columna nueva siguiendo **expand/contract** (agregar nullable → backfill en lotes → empezar a usarla → hacerla obligatoria), como si fuera una tabla gigante en producción.
 
-**Practica:** JPA/Hibernate, propagation, rollback rules (unchecked vs checked), N+1, proxies de Spring.
-**Para la entrevista:** ¿Por qué `@Transactional` no funciona cuando un método llama a otro de la misma clase? ¿Cuándo usarías `REQUIRES_NEW`?
+**Practica:** JPA/Hibernate, propagation, rollback rules (unchecked vs checked), N+1, proxies de Spring, retención de datos y cambios de esquema sin downtime.
+**Para la entrevista:** ¿Por qué `@Transactional` no funciona cuando un método llama a otro de la misma clase? ¿Cuándo usarías `REQUIRES_NEW`? La tabla tiene miles de millones de filas: ¿cómo agregás una columna o un índice sin downtime?
 
 ---
 
@@ -130,14 +132,32 @@ Cada ticket tiene **"Para la entrevista"**: una pregunta que tenés que poder re
 
 ---
 
-### T7 — Virtual threads
-- Procesar archivos de varios procesadores en paralelo con `Executors.newVirtualThreadPerTaskExecutor()`.
-- Comparar con un pool de platform threads (tiempo y cantidad de hilos).
-- Provocar **pinning** con un bloque `synchronized` que hace I/O y detectarlo con JFR (evento `jdk.VirtualThreadPinned`); reemplazar por `ReentrantLock`.
-- Activar `spring.threads.virtual.enabled=true` y ver qué cambia.
+### T7 — Paralelismo: grafo de ejecución, pools por criticidad y virtual threads
 
-**Practica:** virtual threads (21), pinning, cuándo NO usarlos (tareas CPU-bound), structured concurrency (preview, solo leer).
-**Para la entrevista:** ¿Cuándo usarías virtual threads y cuándo no? ¿Qué es el pinning? (Dato: en Java 24 se corrigió el pinning con `synchronized`.)
+Ticket reforzado después de la charla de César: es el tema que más le importa.
+
+**Parte A — Enriquecer una discrepancia (grafo de llamadas):** antes de publicar cada discrepancia hay que enriquecerla llamando a tres servicios stub con latencia simulada:
+- `MerchantConfigService` (configuración del merchant),
+- `FxRateService` (tipo de cambio de la moneda), y
+- `ProcessorStatusService` (estado del pago en el procesador), que **necesita** el `merchantId` que devuelve el primero.
+
+Implementarlo con `CompletableFuture`:
+- `supplyAsync(..., executor)` con executor propio (nunca el `commonPool` para IO).
+- `thenCompose` para la dependencia; `thenCombine` / `allOf` para lo que va en paralelo.
+- `orTimeout` o `completeOnTimeout` por llamada; `exceptionally` / `handle` para degradar con un valor por defecto si un servicio falla.
+- Medir: tiempo secuencial vs paralelo.
+
+**Parte B — Pools por criticidad (bulkhead):**
+- Un pool para el procesamiento crítico (conciliación) y otro para el no crítico (enriquecimiento/notificaciones), con colas acotadas y política de rechazo.
+- Demostrar con un test que saturar el pool no crítico no frena al crítico.
+- Dimensionar cada pool: CPU-bound ≈ cores; IO-bound ≈ cores × (1 + espera/cómputo).
+
+**Parte C — Virtual threads:**
+- Reescribir la Parte A con código secuencial simple sobre `Executors.newVirtualThreadPerTaskExecutor()` y comparar legibilidad y rendimiento.
+- Provocar **pinning** con un bloque `synchronized` que hace I/O y detectarlo con JFR (evento `jdk.VirtualThreadPinned`); reemplazar por `ReentrantLock`.
+
+**Practica:** composición de `CompletableFuture`, bulkheads con thread pools, IO-bound vs CPU-bound, virtual threads (21), pinning.
+**Para la entrevista:** Un request necesita datos de cinco servicios, algunos dependientes de otros: ¿cómo lo implementás en Java? ¿Cómo dimensionás los thread pools? ¿Por qué no alcanza con "agregar más nodos"? ¿Cuándo usarías virtual threads y cuándo no? (Dato: en Java 24 se corrigió el pinning con `synchronized`.)
 
 ---
 
