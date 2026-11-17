@@ -17,7 +17,7 @@ public record ParseResult(List<SettlementLine> lines, List<LineError> errors) {
      * Referencias que aparecen más de una vez, con todas sus líneas.
      * Las referencias únicas no aparecen en el mapa.
      */
-    public Map<String, List<SettlementLine>> duplicates() { 
+    public Map<String, List<SettlementLine>> duplicates() {
         Map<String, List<SettlementLine>> byReference = lines.stream().collect(Collectors.groupingBy(SettlementLine::processorReference));
 
         return byReference.entrySet().stream()
