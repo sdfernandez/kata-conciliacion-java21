@@ -22,9 +22,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
@@ -98,6 +100,27 @@ class ReconciliationServiceIT {
         // compareTo y no equals: la base podría devolver otra escala (acá NUMERIC(19,2) da 2).
         assertThat(result.getLedgerAmount()).isEqualByComparingTo("50.00");
         assertThat(result.getFileAmount()).isEqualByComparingTo("55.00");
+    }
+
+    @Test
+    void failureRollsBackEverythingButRecordsFailedRun() {
+        ledgerRepository.save(ledger(BR, "PR-1", "100.00", DAY));
+        String tooLong = "X".repeat(65); // processor_reference es VARCHAR(64) → falla el INSERT
+
+        assertThatThrownBy(() -> service.reconcile(BR, DAY, List.of(
+                line("PR-1", "100.00"),
+                line(tooLong, "1.00"))))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // La tx principal hizo rollback: ni la run RUNNING ni el resultado Matched de PR-1.
+        assertThat(resultRepository.count()).isZero();
+        // Lo único que quedó es la run FAILED, confirmada en su propia tx (REQUIRES_NEW).
+        assertThat(runRepository.findAll())
+                .singleElement()
+                .satisfies(run -> {
+                    assertThat(run.getStatus()).isEqualTo(RunStatus.FAILED);
+                    assertThat(run.getProcessor()).isEqualTo(BR);
+                });
     }
 
     static LedgerEntryEntity ledger(String processor, String ref, String amount, LocalDate date) {
