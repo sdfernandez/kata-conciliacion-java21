@@ -43,7 +43,7 @@ class PartitioningIT {
         LocalDate day = LocalDate.of(2026, 11, 12);
         ledgerRepository.save(LedgerEntryEntity.fromDomain(new LedgerEntry("PR-1", brl("10.00"), "PROC_BR", day)));
 
-        service.reconcile("PROC_BR", day, List.of(line("PR-1", "10.00"), line("PR-2", "5.00")));
+        service.reconcile("PROC_BR", day, "test-hash", List.of(line("PR-1", "10.00"), line("PR-2", "5.00")));
 
         // tableoid dice en qué partición física vive cada fila.
         assertThat(jdbc.queryForList(

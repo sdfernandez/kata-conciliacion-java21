@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Currency;
@@ -41,6 +42,17 @@ public class LedgerEntryEntity {
     @Column(nullable = false, length = 3)
     private String currency;
 
+    /**
+     * Locking optimista. Hibernate agrega "AND version = ?" a cada UPDATE y lo incrementa. Si el
+     * UPDATE afecta 0 filas, alguien cambió la fila desde que la leímos → excepción (no se pisa).
+     * Nunca se setea a mano: es de Hibernate.
+     */
+    @Version
+    private Long version;
+
+    @Column(name = "reconciled_run_id")
+    private Long reconciledRunId;
+
     protected LedgerEntryEntity() {
         // para JPA
     }
@@ -61,7 +73,24 @@ public class LedgerEntryEntity {
                 processor, settlementDate);
     }
 
+    /** La última run COMPLETED que la matcheó es la que vale. */
+    public void markReconciled(Long runId) {
+        this.reconciledRunId = runId;
+    }
+
+    public String getProcessorReference() {
+        return processorReference;
+    }
+
     public Long getId() {
         return id;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public Long getReconciledRunId() {
+        return reconciledRunId;
     }
 }

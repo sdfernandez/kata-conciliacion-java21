@@ -16,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Es un bean aparte a propósito: si fuera un método de ReconciliationService llamado con
  * this., sería self-invocation y el REQUIRES_NEW se ignoraría en silencio (se grabaría dentro
  * de la tx principal y el rollback se lo llevaría puesto).
+ *
+ * <p>La run FAILED lleva el file_hash (para trazabilidad) pero NO ocupa la clave de idempotencia:
+ * el índice único es parcial (WHERE status <> 'FAILED'), así que un reintento puede correr.
  */
 @Component
 public class FailedRunRecorder {
@@ -33,9 +36,9 @@ public class FailedRunRecorder {
      * EntityManager. Commit propio al salir; después se reanuda la tx original.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Long recordFailure(String processor, LocalDate settlementDate) {
+    public Long recordFailure(String processor, LocalDate settlementDate, String fileHash) {
         Instant now = clock.instant();
-        ReconciliationRunEntity run = ReconciliationRunEntity.start(processor, settlementDate, now);
+        ReconciliationRunEntity run = ReconciliationRunEntity.start(processor, settlementDate, fileHash, now);
         run.fail(now);
         return runRepository.save(run).getId();
     }

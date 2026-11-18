@@ -56,7 +56,7 @@ class NPlusOneIT {
         for (String processor : PROCESSORS) {
             ledgerRepository.saveAll(List.of(
                     ledger(processor, "OK"), ledger(processor, "DIFF"), ledger(processor, "LOST")));
-            reconciliationService.reconcile(processor, DAY, List.of(
+            reconciliationService.reconcile(processor, DAY, "test-hash", List.of(
                     line(processor, "OK", "10.00"), line(processor, "DIFF", "99.00")));
         }
         stats = emf.unwrap(SessionFactory.class).getStatistics();

@@ -10,6 +10,15 @@ public interface ReconciliationResultRepository extends JpaRepository<Reconcilia
     // run.id navega la FK sin hacer join (usa la columna run_id directamente).
     List<ReconciliationResultEntity> findByRunId(Long runId);
 
+    /** Resumen de una run ya guardada. Incluye settlementDate para que haya partition pruning. */
+    @Query("""
+            select new com.kata.conciliacion.persistence.ResultTypeCount(r.resultType, count(r))
+            from ReconciliationResultEntity r
+            where r.run.id = :runId and r.settlementDate = :date
+            group by r.resultType
+            """)
+    List<ResultTypeCount> countByType(Long runId, LocalDate date);
+
     /**
      * Versión ingenua: trae los resultados con la run como proxy LAZY. Si después se toca
      * result.getRun().getProcessor(), cada run distinta dispara su propio SELECT → N+1.

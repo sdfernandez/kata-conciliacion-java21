@@ -71,7 +71,7 @@ class ReconciliationServiceIT {
                 line("PR-5", "7.00"));  // Duplicate
         // PR-3 no viene en el archivo → MissingInProcessor
 
-        RunOutcome outcome = service.reconcile(BR, DAY, file);
+        RunOutcome outcome = service.reconcile(BR, DAY, "test-hash", file);
 
         assertThat(outcome.summary()).isEqualTo(new ReconciliationSummary(1, 1, 1, 1, 1));
 
@@ -94,7 +94,7 @@ class ReconciliationServiceIT {
     void storesBothAmountsForMismatch() {
         ledgerRepository.save(ledger(BR, "PR-2", "50.00", DAY));
 
-        RunOutcome outcome = service.reconcile(BR, DAY, List.of(line("PR-2", "55.00")));
+        RunOutcome outcome = service.reconcile(BR, DAY, "test-hash", List.of(line("PR-2", "55.00")));
 
         var result = resultRepository.findByRunId(outcome.runId()).getFirst();
         // compareTo y no equals: la base podría devolver otra escala (acá NUMERIC(19,2) da 2).
@@ -107,7 +107,7 @@ class ReconciliationServiceIT {
         ledgerRepository.save(ledger(BR, "PR-1", "100.00", DAY));
         String tooLong = "X".repeat(65); // processor_reference es VARCHAR(64) → falla el INSERT
 
-        assertThatThrownBy(() -> service.reconcile(BR, DAY, List.of(
+        assertThatThrownBy(() -> service.reconcile(BR, DAY, "test-hash", List.of(
                 line("PR-1", "100.00"),
                 line(tooLong, "1.00"))))
                 .isInstanceOf(DataIntegrityViolationException.class);

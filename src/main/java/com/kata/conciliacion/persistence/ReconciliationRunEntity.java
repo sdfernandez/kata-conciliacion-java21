@@ -34,6 +34,10 @@ public class ReconciliationRunEntity {
     @Column(nullable = false)
     private RunStatus status;
 
+    // sha256 del archivo en hex. Parte de la clave de idempotencia (índice único parcial, V7).
+    @Column(name = "file_hash", length = 64)
+    private String fileHash;
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 
@@ -43,10 +47,12 @@ public class ReconciliationRunEntity {
     protected ReconciliationRunEntity() {
     }
 
-    public static ReconciliationRunEntity start(String processor, LocalDate settlementDate, Instant now) {
+    public static ReconciliationRunEntity start(String processor, LocalDate settlementDate, String fileHash,
+                                                Instant now) {
         var run = new ReconciliationRunEntity();
         run.processor = processor;
         run.settlementDate = settlementDate;
+        run.fileHash = fileHash;
         run.status = RunStatus.RUNNING;
         run.startedAt = now;
         return run;
@@ -79,6 +85,10 @@ public class ReconciliationRunEntity {
 
     public LocalDate getSettlementDate() {
         return settlementDate;
+    }
+
+    public String getFileHash() {
+        return fileHash;
     }
 
     public RunStatus getStatus() {
