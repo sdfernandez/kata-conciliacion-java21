@@ -13,7 +13,10 @@ import com.kata.conciliacion.persistence.ReconciliationRunEntity;
 import com.kata.conciliacion.persistence.ReconciliationRunRepository;
 import com.kata.conciliacion.persistence.ResultTypeCount;
 import com.kata.conciliacion.persistence.RunStatus;
+import com.kata.conciliacion.outbox.DiscrepancyEventFactory;
+import com.kata.conciliacion.outbox.OutboxEventRepository;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import com.kata.conciliacion.domain.ReconciliationResult.Matched;
 import java.util.List;
@@ -36,6 +39,8 @@ public class ReconciliationService {
     private final ReconciliationResultRepository resultRepository;
     private final ReconciliationEngine engine;
     private final FailedRunRecorder failedRunRecorder;
+    private final OutboxEventRepository outboxRepository;
+    private final DiscrepancyEventFactory eventFactory;
     private final Clock clock;
 
     // Inyección por constructor: dependencias final, explícitas y testeables sin Spring.
@@ -44,12 +49,16 @@ public class ReconciliationService {
                                  ReconciliationResultRepository resultRepository,
                                  ReconciliationEngine engine,
                                  FailedRunRecorder failedRunRecorder,
+                                 OutboxEventRepository outboxRepository,
+                                 DiscrepancyEventFactory eventFactory,
                                  Clock clock) {
         this.ledgerRepository = ledgerRepository;
         this.runRepository = runRepository;
         this.resultRepository = resultRepository;
         this.engine = engine;
         this.failedRunRecorder = failedRunRecorder;
+        this.outboxRepository = outboxRepository;
+        this.eventFactory = eventFactory;
         this.clock = clock;
     }
 
@@ -128,6 +137,13 @@ public class ReconciliationService {
                 byReference.get(matched.processorReference()).markReconciled(run.getId());
             }
         }
+
+        // Outbox: un evento por discrepancia, en ESTA transacción. Se confirman junto con los
+        // resultados o no se confirma nada. Acá NO se llama al broker (eso sería dual write).
+        Instant now = clock.instant();
+        outboxRepository.saveAll(results.stream()
+                .flatMap(result -> eventFactory.eventFor(result, run, now).stream())
+                .toList());
 
         // Sin save(): la run está "managed" en el contexto de persistencia; Hibernate detecta
         // el cambio (dirty checking) y emite el UPDATE en el flush.

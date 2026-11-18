@@ -51,7 +51,7 @@ class NPlusOneIT {
 
     @BeforeEach
     void setUp() {
-        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry");
+        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry, outbox_event, processed_event, discrepancy_ticket");
         // 3 runs (una por procesador), cada una con 1 Matched + 2 discrepancias → 6 discrepancias.
         for (String processor : PROCESSORS) {
             ledgerRepository.saveAll(List.of(

@@ -28,6 +28,12 @@ conciliacion:
     months-ahead: 3
     cron: "0 0 3 * * *"
 
+  outbox:
+    poll-interval-ms: 1000
+    batch-size: 100
+    # Después de N intentos fallidos el evento sale de la cola (dead letter) y hay que alertar.
+    max-attempts: 10
+
 management:
   endpoints:
     web:

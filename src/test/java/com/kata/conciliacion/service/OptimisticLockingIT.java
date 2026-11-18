@@ -43,7 +43,7 @@ class OptimisticLockingIT {
 
     @BeforeEach
     void setUp() {
-        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry");
+        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry, outbox_event, processed_event, discrepancy_ticket");
         tx = new TransactionTemplate(txManager);
         newTx = new TransactionTemplate(txManager);
         newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

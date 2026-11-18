@@ -22,7 +22,7 @@ class TransactionalPitfallsIT {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry");
+        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry, outbox_event, processed_event, discrepancy_ticket");
     }
 
     // ---- self-invocation -------------------------------------------------------------------

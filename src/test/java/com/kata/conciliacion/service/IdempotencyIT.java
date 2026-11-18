@@ -54,7 +54,7 @@ class IdempotencyIT {
 
     @BeforeEach
     void setUp() {
-        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry");
+        jdbc.execute("TRUNCATE reconciliation_result, reconciliation_run, ledger_entry, outbox_event, processed_event, discrepancy_ticket");
         ledgerRepository.saveAll(List.of(ledger("PR-1", "100.00"), ledger("PR-2", "50.00"), ledger("PR-3", "10.00")));
     }
 
