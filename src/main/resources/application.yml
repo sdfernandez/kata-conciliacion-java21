@@ -11,6 +11,14 @@ spring:
       ddl-auto: validate
     # Evita mantener la sesión abierta durante el render de la respuesta HTTP (esconde N+1).
     open-in-view: false
+    properties:
+      hibernate:
+        # Agrupa los INSERT/UPDATE en lotes de 50 (un viaje a la base en vez de 50).
+        # Solo funciona porque los IDs salen de una SEQUENCE (con IDENTITY se desactiva).
+        jdbc.batch_size: 50
+        # Ordena los INSERT por entidad para que no se corte el lote al alternar tablas.
+        order_inserts: true
+        order_updates: true
 
 management:
   endpoints:
