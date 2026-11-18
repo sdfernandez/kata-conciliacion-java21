@@ -47,6 +47,10 @@ public class ReconciliationResultEntity {
     @Column(name = "settlement_date", nullable = false)
     private LocalDate settlementDate;
 
+    // Denormalizado desde la run (expand/contract V4-V6): el reporte no necesita el join.
+    @Column(nullable = false)
+    private String processor;
+
     @Column(name = "processor_reference", nullable = false)
     private String processorReference;
 
@@ -80,6 +84,7 @@ public class ReconciliationResultEntity {
         var e = new ReconciliationResultEntity();
         e.run = run;
         e.settlementDate = run.getSettlementDate();
+        e.processor = run.getProcessor();
         e.processorReference = result.processorReference();
 
         switch (result) {

@@ -25,14 +25,16 @@ public interface ReconciliationResultRepository extends JpaRepository<Reconcilia
             """)
     List<ReconciliationResultEntity> findWithRunBySettlementDate(LocalDate date, ResultType excluded);
 
-    /** Fix 2: proyección. Una sola query, solo las columnas que el reporte usa, sin entidades. */
+    /**
+     * Fix 2: proyección. Una sola query, solo las columnas que el reporte usa, sin entidades.
+     * Desde V6 usa la columna denormalizada r.processor: ni siquiera hace falta el join con la run.
+     */
     @Query("""
             select new com.kata.conciliacion.persistence.DiscrepancyView(
-                rn.processor, r.processorReference, r.resultType, r.ledgerAmount, r.fileAmount)
+                r.processor, r.processorReference, r.resultType, r.ledgerAmount, r.fileAmount)
             from ReconciliationResultEntity r
-            join r.run rn
             where r.settlementDate = :date and r.resultType <> :excluded
-            order by rn.processor, r.processorReference
+            order by r.processor, r.processorReference
             """)
     List<DiscrepancyView> findDiscrepancyViews(LocalDate date, ResultType excluded);
 }

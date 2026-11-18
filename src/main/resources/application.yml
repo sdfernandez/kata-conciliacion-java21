@@ -20,6 +20,14 @@ spring:
         order_inserts: true
         order_updates: true
 
+conciliacion:
+  partitions:
+    # Retención de resultados online. Lo más viejo se archiva y se borra por partición entera.
+    retention-months: 24
+    # Particiones creadas por adelantado (sin DEFAULT: un mes sin partición hace fallar el INSERT).
+    months-ahead: 3
+    cron: "0 0 3 * * *"
+
 management:
   endpoints:
     web:
