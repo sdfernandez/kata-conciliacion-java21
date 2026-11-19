@@ -2,6 +2,7 @@ package com.kata.conciliacion.service;
 
 import com.kata.conciliacion.parser.ParseResult;
 import com.kata.conciliacion.parser.SettlementFileParser;
+import com.kata.conciliacion.processor.ResilientProcessorFileClient;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -30,10 +31,29 @@ public class ReconciliationFacade {
     private static final int MAX_ATTEMPTS = 3;
 
     private final ReconciliationService service;
+    private final ResilientProcessorFileClient processorApi;
     private final SettlementFileParser parser = new SettlementFileParser(); // sin estado, sin Spring
 
-    public ReconciliationFacade(ReconciliationService service) {
+    public ReconciliationFacade(ReconciliationService service, ResilientProcessorFileClient processorApi) {
         this.service = service;
+        this.processorApi = processorApi;
+    }
+
+    /**
+     * T8: el archivo viene de la API del procesador (con timeout, retry y breaker).
+     *
+     * <p>Dos niveles de reintento, los dos seguros por idempotencia:
+     * <ul>
+     *   <li>La descarga es un GET: repetirlo no cambia nada del lado del procesador.</li>
+     *   <li>Si se repite la ejecución ENTERA (el scheduler reintenta, un pod muere a mitad), la
+     *       clave (processor, fecha, hash) de T5 devuelve la run ya hecha en vez de duplicarla.</li>
+     * </ul>
+     * El download queda FUERA de toda transacción: no tener una conexión de la base tomada
+     * mientras esperamos hasta 40 s a una API externa.
+     */
+    public RunOutcome reconcileFromProcessor(String processor, LocalDate settlementDate) {
+        byte[] file = processorApi.download(processor, settlementDate);
+        return reconcile(processor, settlementDate, file);
     }
 
     public RunOutcome reconcile(String processor, LocalDate settlementDate, byte[] fileContent) {

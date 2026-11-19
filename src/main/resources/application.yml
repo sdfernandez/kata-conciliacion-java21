@@ -34,6 +34,13 @@ conciliacion:
     # Después de N intentos fallidos el evento sale de la cola (dead letter) y hay que alertar.
     max-attempts: 10
 
+  processor-api:
+    base-url: http://localhost:8089
+    connect-timeout: 2s
+    # p99 de la descarga (~3 s) + margen. Presupuesto: 4 intentos × 10 s + backoffs ≈ 42 s,
+    # muy por debajo de la ventana del job nocturno.
+    request-timeout: 10s
+
 management:
   endpoints:
     web:
